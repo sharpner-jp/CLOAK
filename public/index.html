@@ -1,0 +1,589 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <link rel="icon" type="image/png" href="favicon.png" />
+  <title>CLOAK - Secret Routing Client</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --primary: #1a1a1a;
+      --primary-hover: #333333;
+      --secondary: #666666;
+      --accent: #007AFF;
+      --accent-hover: #005cbb;
+      --bg-base: #ffffff;
+      --bg-secondary: #f4f4f5;
+      --bg-tertiary: #e4e4e7;
+      --border: #e5e5e5;
+      --text-main: #09090b;
+      --text-muted: #71717a;
+    }
+
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+
+    body {
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+      background: var(--bg-base);
+      color: var(--text-main);
+      height: 100vh;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+      -webkit-font-smoothing: antialiased;
+      -moz-osx-font-smoothing: grayscale;
+    }
+
+    body.in-iframe .browser-chrome { display: none !important; }
+    body.in-iframe #content { margin-top: 0 !important; height: 100vh !important; }
+
+    .browser-chrome {
+      background: var(--bg-secondary);
+      border-bottom: 1px solid var(--border);
+      flex-shrink: 0;
+      display: flex;
+      flex-direction: column;
+    }
+
+    .tab-bar {
+      display: flex;
+      align-items: flex-end;
+      padding: 8px 16px 0 16px;
+      gap: 2px;
+      height: 32px; 
+      overflow-x: auto;
+      background: var(--bg-secondary);
+    }
+
+    .tab-bar::-webkit-scrollbar {
+      height: 0;
+    }
+
+    .tab {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 0 14px;
+      background: transparent;
+      border-radius: 4px 4px 0 0;
+      font-size: 13px;
+      height: 28px; 
+      width: 180px; 
+      cursor: pointer;
+      user-select: none;
+      color: var(--text-muted);
+      position: relative;
+      border: 1px solid transparent;
+      border-bottom: none;
+    }
+
+    .tab:hover {
+      background: var(--bg-tertiary);
+      color: var(--text-main);
+    }
+
+    .tab.active {
+      background: var(--bg-base);
+      color: var(--text-main);
+      font-weight: 600;
+      border-color: var(--border);
+      z-index: 1;
+    }
+
+    .tab-title {
+      overflow: hidden;
+      white-space: nowrap;
+      text-overflow: ellipsis;
+      flex: 1;
+    }
+
+    .close {
+      font-size: 18px;
+      width: 16px;
+      height: 16px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: var(--text-muted);
+      flex-shrink: 0;
+      opacity: 0;
+    }
+
+    .tab:hover .close {
+      opacity: 1;
+    }
+
+    .close:hover {
+      color: var(--text-main);
+    }
+
+    .new-tab-btn {
+      width: 28px;
+      height: 28px;
+      border: none;
+      background: transparent;
+      cursor: pointer;
+      font-size: 18px; 
+      color: var(--text-muted);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      border-radius: 4px;
+      flex-shrink: 0;
+      margin-bottom: 0px;
+      margin-left: 2px;
+    }
+    
+    .new-tab-btn:hover {
+      background: var(--bg-tertiary);
+      color: var(--text-main);
+    }
+
+    .top-bar {
+      display: flex;
+      align-items: center;
+      padding: 8px 20px; 
+      gap: 16px;
+      height: 48px; 
+      background: var(--bg-base);
+      width: 100%;
+    }
+
+    .logo {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      height: 100%;
+    }
+
+    .logo img {
+      height: 100%; 
+      max-height: 20px;
+      width: auto;
+    }
+
+    .nav-buttons {
+      display: flex;
+      gap: 4px;
+    }
+
+    .nav-buttons button {
+      width: 32px;
+      height: 32px;
+      border: 1px solid var(--border);
+      background: var(--bg-base);
+      border-radius: 4px;
+      cursor: pointer;
+      color: var(--text-main);
+      font-size: 16px; 
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .nav-buttons button:hover {
+      background: var(--bg-secondary);
+      border-color: var(--text-muted);
+    }
+
+    .url-bar {
+      flex: 1;
+      display: flex;
+      position: relative;
+    }
+
+    #urlInput {
+      width: 100%;
+      padding: 0 16px;
+      border: 1px solid var(--border);
+      border-radius: 4px;
+      height: 32px; 
+      background: var(--bg-base);
+      color: var(--text-main);
+      font-size: 14px;
+      outline: none;
+    }
+
+    #urlInput:focus {
+      border-color: var(--accent);
+    }
+
+    #goBtn {
+      display: none;
+    }
+
+    #content {
+      flex: 1;
+      position: relative;
+      background: var(--bg-base);
+    }
+
+    .tab-content {
+      width: 100%;
+      height: 100%;
+      display: none;
+      position: absolute;
+    }
+
+    .tab-content.active {
+      display: block;
+    }
+
+    iframe.proxy-frame {
+      width: 100%;
+      height: 100%;
+      border: none;
+    }
+
+    .welcome-screen {
+      height: 100%;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      background: var(--bg-base);
+      position: relative;
+      overflow-y: auto;
+    }
+
+    .welcome-container {
+      text-align: center;
+      max-width: 760px; 
+      width: 100%;
+      padding: 40px;
+      position: relative;
+      z-index: 1;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .welcome-screen h1 {
+      font-size: 0; 
+      line-height: 0;
+      margin-bottom: 60px;
+    }
+
+    .welcome-screen h1 img {
+      width: auto;
+      max-width: 400px; 
+      height: auto;
+    }
+    
+    .welcome-subtitle {
+      color: var(--text-muted);
+      margin-bottom: 48px;
+      font-size: 15px;
+    }
+
+    .welcome-search-box {
+      display: flex;
+      background: var(--bg-base);
+      border: 1px solid var(--border);
+      border-radius: 4px;
+      padding: 0;
+      overflow: hidden;
+      margin-bottom: 0;
+      width: 100%;
+      max-width: 700px;
+    }
+    
+    .welcome-search-box:focus-within {
+      border-color: var(--accent);
+    }
+
+    .welcome-search-box input {
+      flex: 1;
+      border: none;
+      outline: none;
+      padding: 14px 20px; 
+      font-size: 15px;
+      color: var(--text-main);
+      background: transparent;
+    }
+
+    .welcome-search-box input::placeholder {
+      color: var(--text-muted);
+    }
+
+    .welcome-search-box button {
+      padding: 14px 32px; 
+      background: var(--primary);
+      color: white;
+      border: none;
+      cursor: pointer;
+      font-weight: 600;
+      font-size: 14px;
+      white-space: nowrap;
+    }
+
+    .welcome-search-box button:hover {
+      background: var(--primary-hover);
+    }
+
+    .features-section {
+      max-width: 900px;
+      margin: 0 auto;
+      padding: 80px 40px;
+      width: 100%;
+    }
+
+    .features-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+      gap: 32px;
+    }
+
+    .feature-item {
+      text-align: left;
+    }
+
+    .feature-item h3 {
+      font-size: 18px;
+      font-weight: 600;
+      color: var(--text-main);
+      margin-bottom: 8px;
+    }
+
+    .feature-item p {
+      font-size: 14px;
+      line-height: 1.6;
+      color: var(--text-muted);
+    }
+
+    ::-webkit-scrollbar {
+      width: 8px;
+      height: 8px;
+    }
+
+    ::-webkit-scrollbar-track {
+      background: transparent;
+    }
+
+    ::-webkit-scrollbar-thumb {
+      background: var(--border);
+      border-radius: 4px;
+    }
+
+    ::-webkit-scrollbar-thumb:hover {
+      background: var(--text-muted);
+    }
+  </style>
+  <script>
+    if (window.self !== window.top) {
+      window.addEventListener('DOMContentLoaded', () => {
+        document.body.classList.add('in-iframe');
+      });
+    }
+  </script>
+</head>
+<body>
+  <div class="browser-chrome">
+    <div class="tab-bar" id="tabBar">
+      <button class="new-tab-btn" id="newTabBtn">+</button>
+    </div>
+    <div class="top-bar">
+      <div class="logo"><img src="CLOAK (1).png" alt="Cloak Logo"></div>
+      <div class="nav-buttons">
+        <button id="backBtn">←</button>
+        <button id="forwardBtn">→</button>
+        <button id="reloadBtn">↻</button>
+      </div>
+      <div class="url-bar">
+        <input type="text" id="urlInput" placeholder="Search or enter URL">
+        <button id="goBtn">Go</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="content"></div>
+
+  <script>
+    const urlInput = document.getElementById('urlInput');
+    const contentDiv = document.getElementById('content');
+    const tabBar = document.getElementById('tabBar');
+    const newTabBtn = document.getElementById('newTabBtn');
+    
+    let tabs = [];
+    let activeTabId = null;
+    let idCounter = 0;
+
+    window.addEventListener('message', (e) => {
+        const tab = tabs.find(t => t.id === activeTabId);
+        if(!tab) return;
+        if(e.data.type === 'wes-update') {
+            if(e.data.title && tab.title !== e.data.title) {
+                tab.title = e.data.title;
+                if (activeTabId === tab.id) updateTabTitle(tab.id, tab.title);
+            }
+            if (e.data.url && tab.url !== e.data.url) {
+                tab.url = e.data.url;
+                // アドレスバーに復号後のURLを反映させる (ご要望の動作)
+                if (activeTabId === tab.id) urlInput.value = tab.url; 
+            }
+        }
+    });
+
+    function createTab(isHome = false) {
+        const id = idCounter++;
+        const tab = { id, title: 'New Tab', url: '', isHome };
+        tabs.push(tab);
+
+        const tabEl = document.createElement('div');
+        tabEl.className = 'tab';
+        tabEl.dataset.id = id;
+        tabEl.innerHTML = `<span class="tab-title">New Tab</span><span class="close">×</span>`;
+        tabEl.onclick = () => switchTab(id);
+        tabEl.querySelector('.close').onclick = (e) => { e.stopPropagation(); closeTab(id); };
+        tabBar.insertBefore(tabEl, newTabBtn);
+
+        const conEl = document.createElement('div');
+        conEl.className = 'tab-content';
+        conEl.dataset.id = id;
+        
+        if(isHome) {
+            conEl.innerHTML = `
+                <div class="welcome-screen">
+                    <div class="welcome-container">
+                        <h1><img src="CLOAK.png" alt="Cloak"></h1>
+                        <div class="welcome-search-box">
+                            <input type="text" placeholder="Yahoo!検索 または URLを入力">
+                            <button>検索</button>
+                        </div>
+                    </div>
+                    <div class="features-section">
+                        <div class="features-grid">
+                            <div class="feature-item">
+                                <h3>完全な匿名性</h3>
+                                <p>高度な暗号化技術により、あなたのオンライン活動を完全に匿名化します。IPアドレスや閲覧履歴は一切追跡されません。</p>
+                            </div>
+                            <div class="feature-item">
+                                <h3>高速ブラウジング</h3>
+                                <p>最適化されたルーティングシステムにより、セキュリティを犠牲にすることなく高速なブラウジング体験を提供します。</p>
+                            </div>
+                            <div class="feature-item">
+                                <h3>シンプルな操作</h3>
+                                <p>複雑な設定は不要。URLを入力するだけで、すぐに安全で匿名のブラウジングを開始できます。</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>`;
+            const input = conEl.querySelector('input');
+            const btn = conEl.querySelector('button');
+            const go = () => loadUrl(input.value);
+            btn.onclick = go;
+            input.onkeypress = (e) => { if(e.key === 'Enter') go(); };
+        } else {
+            const frame = document.createElement('iframe');
+            frame.className = 'proxy-frame';
+            frame.sandbox = "allow-forms allow-scripts allow-same-origin allow-popups allow-modals allow-downloads";
+            conEl.appendChild(frame);
+        }
+        contentDiv.appendChild(conEl);
+        switchTab(id);
+        return tab;
+    }
+
+    function switchTab(id) {
+        activeTabId = id;
+        document.querySelectorAll('.tab, .tab-content').forEach(el => el.classList.remove('active'));
+        const t = document.querySelector(`.tab[data-id="${id}"]`);
+        const c = document.querySelector(`.tab-content[data-id="${id}"]`);
+        if(t) t.classList.add('active');
+        if(c) c.classList.add('active');
+        
+        const tab = tabs.find(x => x.id === id);
+        if(tab) {
+            urlInput.value = tab.url || ''; 
+            updateTabTitle(id, tab.title);
+        }
+    }
+
+    function closeTab(id) {
+        const idx = tabs.findIndex(t => t.id === id);
+        if(idx === -1) return;
+        tabs.splice(idx, 1);
+        document.querySelector(`.tab[data-id="${id}"]`).remove();
+        document.querySelector(`.tab-content[data-id="${id}"]`).remove();
+        if(tabs.length === 0) createTab(true);
+        else if(activeTabId === id) switchTab(tabs[Math.max(0, idx-1)].id);
+    }
+
+    function updateTabTitle(id, title) {
+        const el = document.querySelector(`.tab[data-id="${id}"] .tab-title`);
+        if(el) el.textContent = title || 'Loading...';
+    }
+
+    async function loadUrl(input) {
+        if(!input) return;
+        let url = input.trim();
+        
+        if(!url.startsWith('http')) {
+            if(url.includes('.') && !url.includes(' ')) {
+                url = 'https://' + url;
+            } else {
+                url = 'https://search.yahoo.co.jp/search?p=' + encodeURIComponent(url);
+            }
+        }
+
+        const tab = tabs.find(t => t.id === activeTabId);
+        if(!tab) return;
+
+        const con = document.querySelector(`.tab-content[data-id="${activeTabId}"]`);
+        if(con.querySelector('.welcome-screen')) {
+            con.innerHTML = '';
+            const f = document.createElement('iframe');
+            f.className = 'proxy-frame';
+            f.sandbox = "allow-forms allow-scripts allow-same-origin allow-popups allow-modals allow-downloads";
+            con.appendChild(f);
+            tab.isHome = false;
+        }
+
+        const iframe = con.querySelector('iframe');
+        updateTabTitle(activeTabId, '読み込み中...');
+        
+        try {
+            const res = await fetch(`/encrypt?url=${encodeURIComponent(url)}`);
+            const data = await res.json();
+            if(data.result) {
+                iframe.src = `/proxy?__q=${data.result}`;
+                tab.url = url;
+                // アドレスバーに復号後のURLを設定
+                urlInput.value = url; 
+            }
+        } catch(e) {
+            console.error(e);
+            alert('Error: Could not encrypt URL');
+        }
+    }
+
+    document.getElementById('goBtn').onclick = () => loadUrl(urlInput.value);
+    urlInput.onkeypress = (e) => { if(e.key==='Enter') loadUrl(urlInput.value); };
+    newTabBtn.onclick = () => createTab(true);
+    
+    // **修正点**: リロードボタンは、iframe内のlocation.reloadを呼び出すことで、
+    // 現在のプロキシページをそのまま再読み込みするように変更
+    document.getElementById('reloadBtn').onclick = () => {
+        const f = document.querySelector(`.tab-content[data-id="${activeTabId}"] iframe`);
+        // iframe内部に注入されたスクリプトが location.reload() をハイジャックしているため、
+        // これを呼び出すことで、プロキシURL自体が再アクセスされる
+        if(f) f.contentWindow.location.reload();
+    };
+    
+    document.getElementById('backBtn').onclick = () => {
+        const f = document.querySelector(`.tab-content[data-id="${activeTabId}"] iframe`);
+        if(f) f.contentWindow.history.back();
+    };
+    document.getElementById('forwardBtn').onclick = () => {
+        const f = document.querySelector(`.tab-content[data-id="${activeTabId}"] iframe`);
+        if(f) f.contentWindow.history.forward();
+    };
+
+    createTab(true);
+  </script>
+</body>
+</html>
