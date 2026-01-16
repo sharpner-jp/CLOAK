@@ -53,7 +53,7 @@
       align-items: flex-end;
       padding: 8px 16px 0 16px;
       gap: 2px;
-      height: 32px; 
+      height: 32px;
       overflow-x: auto;
       background: var(--bg-secondary);
     }
@@ -68,10 +68,10 @@
       gap: 10px;
       padding: 0 14px;
       background: transparent;
-      border-radius: 4px 4px 0 0;
+      border-radius: 12px 12px 0 0;
       font-size: 13px;
-      height: 28px; 
-      width: 180px; 
+      height: 28px;
+      width: 180px;
       cursor: pointer;
       user-select: none;
       color: var(--text-muted);
@@ -126,17 +126,17 @@
       border: none;
       background: transparent;
       cursor: pointer;
-      font-size: 18px; 
+      font-size: 18px;
       color: var(--text-muted);
       display: flex;
       align-items: center;
       justify-content: center;
-      border-radius: 4px;
+      border-radius: 14px;
       flex-shrink: 0;
       margin-bottom: 0px;
       margin-left: 2px;
     }
-    
+
     .new-tab-btn:hover {
       background: var(--bg-tertiary);
       color: var(--text-main);
@@ -145,9 +145,9 @@
     .top-bar {
       display: flex;
       align-items: center;
-      padding: 8px 20px; 
+      padding: 8px 20px;
       gap: 16px;
-      height: 48px; 
+      height: 48px;
       background: var(--bg-base);
       width: 100%;
     }
@@ -160,7 +160,7 @@
     }
 
     .logo img {
-      height: 100%; 
+      height: 100%;
       max-height: 20px;
       width: auto;
     }
@@ -175,10 +175,10 @@
       height: 32px;
       border: 1px solid var(--border);
       background: var(--bg-base);
-      border-radius: 4px;
+      border-radius: 16px;
       cursor: pointer;
       color: var(--text-main);
-      font-size: 16px; 
+      font-size: 16px;
       display: flex;
       align-items: center;
       justify-content: center;
@@ -199,8 +199,8 @@
       width: 100%;
       padding: 0 16px;
       border: 1px solid var(--border);
-      border-radius: 4px;
-      height: 32px; 
+      border-radius: 16px;
+      height: 32px;
       background: var(--bg-base);
       color: var(--text-main);
       font-size: 14px;
@@ -250,7 +250,7 @@
 
     .welcome-container {
       text-align: center;
-      max-width: 760px; 
+      max-width: 760px;
       width: 100%;
       padding: 40px;
       position: relative;
@@ -263,17 +263,17 @@
     }
 
     .welcome-screen h1 {
-      font-size: 0; 
+      font-size: 0;
       line-height: 0;
       margin-bottom: 60px;
     }
 
     .welcome-screen h1 img {
       width: auto;
-      max-width: 400px; 
+      max-width: 400px;
       height: auto;
     }
-    
+
     .welcome-subtitle {
       color: var(--text-muted);
       margin-bottom: 48px;
@@ -284,14 +284,14 @@
       display: flex;
       background: var(--bg-base);
       border: 1px solid var(--border);
-      border-radius: 4px;
+      border-radius: 24px;
       padding: 0;
       overflow: hidden;
       margin-bottom: 0;
       width: 100%;
       max-width: 700px;
     }
-    
+
     .welcome-search-box:focus-within {
       border-color: var(--accent);
     }
@@ -300,7 +300,7 @@
       flex: 1;
       border: none;
       outline: none;
-      padding: 14px 20px; 
+      padding: 14px 20px;
       font-size: 15px;
       color: var(--text-main);
       background: transparent;
@@ -311,7 +311,7 @@
     }
 
     .welcome-search-box button {
-      padding: 14px 32px; 
+      padding: 14px 32px;
       background: var(--primary);
       color: white;
       border: none;
@@ -372,6 +372,20 @@
     ::-webkit-scrollbar-thumb:hover {
       background: var(--text-muted);
     }
+
+    .loading-spinner {
+      width: 16px;
+      height: 16px;
+      border: 2px solid var(--border);
+      border-top-color: var(--accent);
+      border-radius: 50%;
+      animation: spin 0.8s linear infinite;
+      flex-shrink: 0;
+    }
+
+    @keyframes spin {
+      to { transform: rotate(360deg); }
+    }
   </style>
   <script>
     if (window.self !== window.top) {
@@ -407,23 +421,41 @@
     const contentDiv = document.getElementById('content');
     const tabBar = document.getElementById('tabBar');
     const newTabBtn = document.getElementById('newTabBtn');
-    
+
     let tabs = [];
     let activeTabId = null;
     let idCounter = 0;
+    let draggedTab = null;
+    let draggedElement = null;
 
+    // バグ修正: メッセージの送信元iframeを特定して正しいタブの情報を更新する
     window.addEventListener('message', (e) => {
-        const tab = tabs.find(t => t.id === activeTabId);
-        if(!tab) return;
-        if(e.data.type === 'wes-update') {
-            if(e.data.title && tab.title !== e.data.title) {
-                tab.title = e.data.title;
-                if (activeTabId === tab.id) updateTabTitle(tab.id, tab.title);
+        // 全てのタブコンテンツから送信元に一致するiframeを探す
+        const targetTab = tabs.find(t => {
+            const iframe = document.querySelector(`.tab-content[data-id="${t.id}"] iframe`);
+            return iframe && iframe.contentWindow === e.source;
+        });
+
+        if (!targetTab) return;
+
+        if (e.data.type === 'wes-update') {
+            // ローディング開始
+            if (e.data.loading) {
+                setTabLoading(targetTab.id, true);
+                updateTabTitle(targetTab.id, '読み込み中...');
             }
-            if (e.data.url && tab.url !== e.data.url) {
-                tab.url = e.data.url;
-                // アドレスバーに復号後のURLを反映させる (ご要望の動作)
-                if (activeTabId === tab.id) urlInput.value = tab.url; 
+
+            if (e.data.title && targetTab.title !== e.data.title) {
+                targetTab.title = e.data.title;
+                // タイトル表示を更新
+                updateTabTitle(targetTab.id, targetTab.title);
+                // ローディング終了
+                setTabLoading(targetTab.id, false);
+            }
+            if (e.data.url && targetTab.url !== e.data.url) {
+                targetTab.url = e.data.url;
+                // 現在アクティブなタブだった場合のみアドレスバーも更新
+                if (activeTabId === targetTab.id) urlInput.value = targetTab.url;
             }
         }
     });
@@ -436,15 +468,46 @@
         const tabEl = document.createElement('div');
         tabEl.className = 'tab';
         tabEl.dataset.id = id;
-        tabEl.innerHTML = `<span class="tab-title">New Tab</span><span class="close">×</span>`;
+        tabEl.draggable = true;
+        tabEl.innerHTML = `<span class="loading-spinner" style="display: none;"></span><span class="tab-title">New Tab</span><span class="close">×</span>`;
         tabEl.onclick = () => switchTab(id);
         tabEl.querySelector('.close').onclick = (e) => { e.stopPropagation(); closeTab(id); };
+
+        // ドラッグイベント
+        tabEl.ondragstart = (e) => {
+            draggedTab = tab;
+            draggedElement = tabEl;
+            tabEl.style.opacity = '0.5';
+            e.dataTransfer.effectAllowed = 'move';
+        };
+
+        tabEl.ondragend = (e) => {
+            tabEl.style.opacity = '';
+            draggedTab = null;
+            draggedElement = null;
+        };
+
+        tabEl.ondragover = (e) => {
+            e.preventDefault();
+            e.dataTransfer.dropEffect = 'move';
+            if (draggedElement && draggedElement !== tabEl) {
+                const rect = tabEl.getBoundingClientRect();
+                const midpoint = rect.left + rect.width / 2;
+                if (e.clientX < midpoint) {
+                    tabBar.insertBefore(draggedElement, tabEl);
+                } else {
+                    tabBar.insertBefore(draggedElement, tabEl.nextSibling);
+                }
+                updateTabsOrder();
+            }
+        };
+
         tabBar.insertBefore(tabEl, newTabBtn);
 
         const conEl = document.createElement('div');
         conEl.className = 'tab-content';
         conEl.dataset.id = id;
-        
+
         if(isHome) {
             conEl.innerHTML = `
                 <div class="welcome-screen">
@@ -481,11 +544,25 @@
             const frame = document.createElement('iframe');
             frame.className = 'proxy-frame';
             frame.sandbox = "allow-forms allow-scripts allow-same-origin allow-popups allow-modals allow-downloads";
+            frame.onload = () => {
+                setTabLoading(id, false);
+            };
             conEl.appendChild(frame);
         }
         contentDiv.appendChild(conEl);
         switchTab(id);
         return tab;
+    }
+
+    function updateTabsOrder() {
+        const newOrder = [];
+        const tabElements = tabBar.querySelectorAll('.tab');
+        tabElements.forEach(el => {
+            const id = parseInt(el.dataset.id);
+            const tab = tabs.find(t => t.id === id);
+            if (tab) newOrder.push(tab);
+        });
+        tabs = newOrder;
     }
 
     function switchTab(id) {
@@ -495,10 +572,10 @@
         const c = document.querySelector(`.tab-content[data-id="${id}"]`);
         if(t) t.classList.add('active');
         if(c) c.classList.add('active');
-        
+
         const tab = tabs.find(x => x.id === id);
         if(tab) {
-            urlInput.value = tab.url || ''; 
+            urlInput.value = tab.url || '';
             updateTabTitle(id, tab.title);
         }
     }
@@ -518,10 +595,17 @@
         if(el) el.textContent = title || 'Loading...';
     }
 
+    function setTabLoading(id, loading) {
+        const spinner = document.querySelector(`.tab[data-id="${id}"] .loading-spinner`);
+        if(spinner) {
+            spinner.style.display = loading ? 'block' : 'none';
+        }
+    }
+
     async function loadUrl(input) {
         if(!input) return;
         let url = input.trim();
-        
+
         if(!url.startsWith('http')) {
             if(url.includes('.') && !url.includes(' ')) {
                 url = 'https://' + url;
@@ -539,24 +623,28 @@
             const f = document.createElement('iframe');
             f.className = 'proxy-frame';
             f.sandbox = "allow-forms allow-scripts allow-same-origin allow-popups allow-modals allow-downloads";
+            f.onload = () => {
+                setTabLoading(activeTabId, false);
+            };
             con.appendChild(f);
             tab.isHome = false;
         }
 
         const iframe = con.querySelector('iframe');
+        setTabLoading(activeTabId, true);
         updateTabTitle(activeTabId, '読み込み中...');
-        
+
         try {
             const res = await fetch(`/encrypt?url=${encodeURIComponent(url)}`);
             const data = await res.json();
             if(data.result) {
                 iframe.src = `/proxy?__q=${data.result}`;
                 tab.url = url;
-                // アドレスバーに復号後のURLを設定
-                urlInput.value = url; 
+                urlInput.value = url;
             }
         } catch(e) {
             console.error(e);
+            setTabLoading(activeTabId, false);
             alert('Error: Could not encrypt URL');
         }
     }
@@ -564,23 +652,52 @@
     document.getElementById('goBtn').onclick = () => loadUrl(urlInput.value);
     urlInput.onkeypress = (e) => { if(e.key==='Enter') loadUrl(urlInput.value); };
     newTabBtn.onclick = () => createTab(true);
-    
-    // **修正点**: リロードボタンは、iframe内のlocation.reloadを呼び出すことで、
-    // 現在のプロキシページをそのまま再読み込みするように変更
+
     document.getElementById('reloadBtn').onclick = () => {
+        const tab = tabs.find(t => t.id === activeTabId);
+        if (!tab) return;
+
+        setTabLoading(activeTabId, true);
+        updateTabTitle(activeTabId, '読み込み中...');
+
         const f = document.querySelector(`.tab-content[data-id="${activeTabId}"] iframe`);
-        // iframe内部に注入されたスクリプトが location.reload() をハイジャックしているため、
-        // これを呼び出すことで、プロキシURL自体が再アクセスされる
-        if(f) f.contentWindow.location.reload();
+        if(f) {
+            // iframeを再読み込み
+            const currentSrc = f.src;
+            f.src = currentSrc;
+        }
     };
-    
+
     document.getElementById('backBtn').onclick = () => {
+        const tab = tabs.find(t => t.id === activeTabId);
+        if (!tab) return;
+
+        setTabLoading(activeTabId, true);
+
         const f = document.querySelector(`.tab-content[data-id="${activeTabId}"] iframe`);
-        if(f) f.contentWindow.history.back();
+        if(f) {
+            try {
+                f.contentWindow.history.back();
+            } catch(e) {
+                setTabLoading(activeTabId, false);
+            }
+        }
     };
+
     document.getElementById('forwardBtn').onclick = () => {
+        const tab = tabs.find(t => t.id === activeTabId);
+        if (!tab) return;
+
+        setTabLoading(activeTabId, true);
+
         const f = document.querySelector(`.tab-content[data-id="${activeTabId}"] iframe`);
-        if(f) f.contentWindow.history.forward();
+        if(f) {
+            try {
+                f.contentWindow.history.forward();
+            } catch(e) {
+                setTabLoading(activeTabId, false);
+            }
+        }
     };
 
     createTab(true);
