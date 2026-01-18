@@ -1,5 +1,5 @@
 {
-  "name": "glacier-proxy",
+  "name": "Cloak Server",
   "version": "2.1.0",
   "description": "Secure Web Proxy with SPA Support",
   "main": "server.js",
