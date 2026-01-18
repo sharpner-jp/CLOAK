@@ -19,23 +19,7 @@ CLOAK is a privacy-focused web client that provides anonymous browsing. It suppo
   - Resolves relative URLs for images, links, and styles.
   - Strips `<script>` tags for security.
 
-## Installation
 
-1. Clone the repository:
-```bash
-npm install https://github.com/sharpner-jp/CLOAK
-```
-2. Run server:
-```bash
-npm start
-```
-
-## How to use
-
-1. Open this web site:
-```bash
-localhost:3000
-```
 ## How to use easy
 
 1. Open this web site:
